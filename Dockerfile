@@ -19,7 +19,8 @@ RUN apt-get update \
         libssl1.0 \
         apt-transport-https \
         gnupg-agent \
-        software-properties-common
+        software-properties-common \
+        gettext-base
         
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 RUN add-apt-repository \
