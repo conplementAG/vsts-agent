@@ -48,22 +48,10 @@ RUN apt-get install openjdk-18-jdk
 RUN npm install --global yarn
 RUN npm install --global lerna
 
-ARG yarn=yarn
-ARG lerna=lerna
-
 RUN apt-get install nodejs -y
 RUN apt-get install wget
 
 WORKDIR /vsts
-
-COPY ./dotnet-install.sh .
-RUN chmod +x dotnet-install.sh
-RUN ./dotnet-install.sh --channel 2.0
-RUN ./dotnet-install.sh --channel 2.1
-RUN ./dotnet-install.sh --channel 2.2
-RUN ./dotnet-install.sh --channel 3.0
-RUN ./dotnet-install.sh --channel 3.1
-RUN ./dotnet-install.sh --channel 5.0
 
 RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 RUN dpkg -i packages-microsoft-prod.deb
@@ -76,8 +64,6 @@ RUN apt-get update
 RUN apt-get install -y dotnet-host
 RUN apt-get install -y dotnet-sdk-6.0
 RUN apt-get install -y dotnet-sdk-8.0
-
-ARG dotnet8=dotnet8
 
 WORKDIR /usr/src/
 RUN apt install make libssl-dev libghc-zlib-dev libcurl4-gnutls-dev libexpat1-dev gettext unzip
