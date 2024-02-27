@@ -29,11 +29,11 @@ Ubuntu 22.04.
 
 ## Installed tools
 
-git             : 2.44.0
-openjdk         : 18
-dotnet          : 6.0, 8.0
-node            : 21.6.2
-docker          : 25.0.3
-docker-compose  : 2.24.6
-yarn 
-lerna
+- git             : 2.44.0
+- openjdk         : 18
+- dotnet          : 6.0, 8.0
+- node            : 21.6.2
+- docker          : 25.0.3
+- docker-compose  : 2.24.6
+- yarn 
+- lerna
