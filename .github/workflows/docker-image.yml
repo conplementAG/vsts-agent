@@ -21,13 +21,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    - uses: mr-smithers-excellent/docker-build-push@v3
-      name: Build & push Docker image
-      with:
-        image: conplementag/vsts-agent
-        tags: 2.0, latest
-        registry: docker.io
-        dockerfile: Dockerfile
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Build & Push Docker image
+      run: |
+        docker build . --file Dockerfile --tag conplementag/vsts-agent:2.0
+        docker push conplementag/vsts-agent:2.0
       
