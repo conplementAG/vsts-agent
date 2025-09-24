@@ -183,7 +183,7 @@ stages:
         
       - script: |
           echo "FROM alpine:3.18" > Dockerfile
-          echo "RUN --network=host echo 'Test mit RUN --network=host'" >> Dockerfile
+          echo "RUN --network=none echo 'Test mit RUN --network=none'" >> Dockerfile
           echo "Dockerfile erzeugt:"
           cat Dockerfile
         displayName: 'Dockerfile erstellen'
