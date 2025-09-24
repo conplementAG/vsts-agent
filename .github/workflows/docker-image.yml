@@ -3,6 +3,12 @@ name: Docker Image CI
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to build (e.g., v3.0)'
+        required: true
+        type: string
 
 env:
   REGISTRY: docker.io
@@ -18,6 +24,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
       
     - name: Extract metadata
       id: meta
