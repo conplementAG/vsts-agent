@@ -81,8 +81,9 @@ RUN mkdir -p "/root/.microsoft/Team Foundation/4.0/Configuration/TEE-Mementos" \
  && cd "/root/.microsoft/Team Foundation/4.0/Configuration/TEE-Mementos" \
  && echo '<ProductIdData><eula-14.0 value="true"/></ProductIdData>' > "com.microsoft.tfs.client.productid.xml"
 
-
+WORKDIR /vsts
 COPY ./start.sh .
+RUN sed -i 's/\r$//' start.sh
 RUN chmod +x start.sh
 
 CMD ["./start.sh"]
@@ -90,7 +91,7 @@ CMD ["./start.sh"]
 FROM ubuntu-base
 
 ENV DOCKER_CHANNEL stable
-ENV DOCKER_VERSION 25.0.3
+ENV DOCKER_VERSION 28.4.0
 
 RUN set -ex \
  && curl -fL "https://download.docker.com/linux/static/${DOCKER_CHANNEL}/`uname -m`/docker-${DOCKER_VERSION}.tgz" -o docker.tgz \
@@ -98,9 +99,25 @@ RUN set -ex \
  && rm docker.tgz \
  && docker -v
 
-ENV DOCKER_COMPOSE_VERSION v2.24.6
+ENV DOCKER_COMPOSE_VERSION v2.39.4
 
 RUN set -x \
  && curl -fSL "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-`uname -s`-`uname -m`" -o /usr/local/bin/docker-compose \
  && chmod +x /usr/local/bin/docker-compose \
  && docker-compose -v
+
+# Install Docker Buildx plugin (enhanced build features with BuildKit)
+ENV BUILDX_VERSION v0.28.0
+
+RUN set -x \
+ && mkdir -p /usr/local/lib/docker/cli-plugins \
+ && curl -fL --retry 3 --retry-delay 5 "https://github.com/docker/buildx/releases/download/$BUILDX_VERSION/buildx-$BUILDX_VERSION.linux-amd64" -o /usr/local/lib/docker/cli-plugins/docker-buildx \
+ && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx \
+ && docker buildx version
+
+# Enable BuildKit by default (BuildKit is included in Docker 25.0.3)
+ENV DOCKER_BUILDKIT=1
+ENV BUILDKIT_PROGRESS=plain
+
+# Configure Buildx as default builder
+RUN docker buildx create --name container --driver docker-container --use || true
