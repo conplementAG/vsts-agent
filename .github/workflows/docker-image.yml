@@ -41,6 +41,14 @@ jobs:
           org.opencontainers.image.title=VSTS Agent
           org.opencontainers.image.description=Azure DevOps self-hosted agent with Docker, BuildKit, .NET, Node.js, Java
           org.opencontainers.image.vendor=conplementAG
+
+    - name: Debug metadata
+      run: |
+        echo "Generated tags: ${{ steps.meta.outputs.tags }}"
+        echo "Generated labels: ${{ steps.meta.outputs.labels }}"
+        echo "Event name: ${{ github.event_name }}"
+        echo "Ref: ${{ github.ref }}"
+        echo "Input tag: ${{ github.event.inputs.tag }}"
           
     - name: Login to Docker Hub
       uses: docker/login-action@v3
