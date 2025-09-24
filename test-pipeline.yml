@@ -175,7 +175,7 @@ stages:
           echo "Prüfe Docker-Version..."
           docker version
           echo "Prüfe, ob BuildKit aktiv ist..."
-          docker info | grep -i buildkit"
+          docker info | grep -i buildkit
         displayName: 'show docker version'
         
       - script: |
