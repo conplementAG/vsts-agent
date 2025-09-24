@@ -1,14 +1,13 @@
 name: Docker Image CI
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Git tag to build (e.g., v3.0.0)'
-        required: true
+        description: 'Docker image tag (e.g., 3.0)'
+        required: false
         type: string
+        default: 'latest'
 
 env:
   REGISTRY: docker.io
@@ -24,32 +23,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.inputs.tag || github.ref }}
       
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
-          type=raw,value=latest
-        labels: |
-          org.opencontainers.image.title=VSTS Agent
-          org.opencontainers.image.description=Azure DevOps self-hosted agent with Docker, BuildKit, .NET, Node.js, Java
-          org.opencontainers.image.vendor=conplementAG
-
-    - name: Debug metadata
-      run: |
-        echo "Generated tags: ${{ steps.meta.outputs.tags }}"
-        echo "Generated labels: ${{ steps.meta.outputs.labels }}"
-        echo "Event name: ${{ github.event_name }}"
-        echo "Ref: ${{ github.ref }}"
-        echo "Input tag: ${{ github.event.inputs.tag }}"
-          
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
@@ -57,13 +31,12 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         
-    # - name: Build and push Docker image
-    #   uses: docker/build-push-action@v5
-    #   with:
-    #     context: .
-    #     file: ./Dockerfile
-    #     platforms: linux/amd64
-    #     push: true
-    #     tags: ${{ steps.meta.outputs.tags }}
-    #     labels: ${{ steps.meta.outputs.labels }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
       
