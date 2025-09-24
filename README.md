@@ -32,8 +32,9 @@ Ubuntu 22.04.
 - git             : 2.44.0
 - openjdk         : 18
 - dotnet          : 6.0, 8.0
-- node            : 21.6.2
-- docker          : 25.0.3
-- docker-compose  : 2.24.6
+- node            : 21.x
+- docker          : 28.4.0
+- docker-compose  : 2.39.4
+- docker-buildx   : 0.28.0 (with BuildKit support)
 - yarn 
 - lerna
