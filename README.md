@@ -5,7 +5,7 @@ Now that you have created an image, you can run a container.
  Run the container. This installs the latest version of the agent, configures it, and runs the agent. It targets the `Default` pool of a specified Azure DevOps or Azure DevOps Server instance of your choice:
 
     ```shell
-    docker run -e VSTS_ACCOUNT=<Azure DevOps instance> -e VSTS_TOKEN=<PAT token> -e VSTS_AGENT=mydockeragent cgot/linux-dockeragent:latest
+    docker run -e VSTS_ACCOUNT=<Azure DevOps instance> -e VSTS_TOKEN=<PAT token> -e VSTS_AGENT=mydockeragent conplementag/vsts-agent:3.0
     ```
 
 Optionally, you can control the pool and agent work directory by using additional [environment variables](#environment-variables).
