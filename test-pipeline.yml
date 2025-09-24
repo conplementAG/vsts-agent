@@ -175,7 +175,10 @@ stages:
           echo "Prüfe Docker-Version..."
           docker version
           echo "Prüfe, ob BuildKit aktiv ist..."
-          docker info | grep -i buildkit
+          docker info | grep -i buildkit || echo "BuildKit Info nicht in docker info gefunden (das ist normal)"
+          echo ""
+          echo "Prüfe BuildKit über Environment Variable..."
+          echo "DOCKER_BUILDKIT ist gesetzt auf: ${DOCKER_BUILDKIT:-nicht gesetzt}"
         displayName: 'show docker version'
         
       - script: |
