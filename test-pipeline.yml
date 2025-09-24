@@ -1,0 +1,201 @@
+
+trigger: none
+
+# Hardcodierte Pool- und Agent-Konfiguration
+pool:
+  name: 'TmpPoolHolger'
+  demands:
+  - Agent.Name -equals TmpAgentHolgerLocal    
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: HelloWorld
+  displayName: 'Hello World Stage'
+  jobs:
+  - job: SayHello
+    displayName: 'Say Hello Job'
+    steps:
+
+    # Einfacher Hello World Schritt
+    # - task: PowerShell@2
+    #   displayName: 'Hello World - PowerShell'
+    #   inputs:
+    #     targetType: 'inline'
+    #     script: |
+    #       Write-Host "🎉 Hello World from Azure DevOps!"
+    #       Write-Host "Pipeline läuft auf Agent: $(Agent.Name)"
+    #       Write-Host "Build-ID: $(Build.BuildId)"
+    #       Write-Host "Repository: $(Build.Repository.Name)"
+    #       Write-Host "Branch: $(Build.SourceBranchName)"
+    #       Write-Host "Datum: $(Get-Date)"
+    
+    # Bash Alternative 
+    - task: Bash@3
+      displayName: 'Hello World - Bash'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "🐧 Hello World from Linux!"
+          echo "Hostname: $(hostname)"
+          echo "User: $(whoami)"
+          echo "Working Directory: $(pwd)"
+          echo "Available Tools:"
+          echo "- Node.js Version: $(node --version)"
+          echo "- .NET Version: $(dotnet --version)"
+          echo "- Java Version: $(java -version 2>&1 | head -n 1)"
+          echo "- Git Version: $(git --version)"
+          echo "- Docker Version: $(docker --version)"
+    
+    # System-Informationen anzeigen
+    - task: Bash@3
+      displayName: 'System Information'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== System Information ==="
+          echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+          echo "Kernel: $(uname -r)"
+          echo "Architecture: $(uname -m)"
+          echo "CPU Info:"
+          cat /proc/cpuinfo | grep "model name" | head -1
+          echo "Memory:"
+          free -h
+          echo "Disk Space:"
+          df -h /
+
+    # Test verschiedener Tools
+    - task: Bash@3
+      displayName: 'Tool Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Testing Development Tools ==="
+          
+          echo "📦 NPM Packages (Global):"
+          npm list -g --depth=0
+          
+          echo "🔧 .NET SDKs:"
+          dotnet --list-sdks
+          
+          echo "☕ Java:"
+          javac -version
+          
+          echo "🐳 Docker:"
+          docker info --format "Version: {{.ServerVersion}}"
+          
+          echo "🏗️ Build Tools:"
+          make --version | head -1
+          gcc --version | head -1
+
+    # Erstelle ein kleines Artefakt
+    - task: Bash@3
+      displayName: 'Create Build Artifact'
+      inputs:
+        targetType: 'inline'
+        script: |
+          mkdir -p $(Build.ArtifactStagingDirectory)/hello-world
+          echo "Hello World Build Artifact" > $(Build.ArtifactStagingDirectory)/hello-world/README.txt
+          echo "Build-ID: $(Build.BuildId)" >> $(Build.ArtifactStagingDirectory)/hello-world/README.txt
+          echo "Build-Datum: $(date)" >> $(Build.ArtifactStagingDirectory)/hello-world/README.txt
+          echo "Agent: $(Agent.Name)" >> $(Build.ArtifactStagingDirectory)/hello-world/README.txt
+
+    # Veröffentliche das Artefakt
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Hello World Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'hello-world-artifact'
+        publishLocation: 'Container'
+
+# Zweite Stage für erweiterte Tests (optional)
+- stage: ExtendedTests
+  displayName: 'Extended Tests'
+  dependsOn: HelloWorld
+  condition: succeeded()
+  jobs:
+  - job: NodeJSTest
+    displayName: 'Node.js Test'
+    steps:
+    - task: Bash@3
+      displayName: 'Simple Node.js App'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "console.log('Hello from Node.js!');" > hello.js
+          echo "console.log('Node.js Version:', process.version);" >> hello.js
+          echo "console.log('Platform:', process.platform);" >> hello.js
+          node hello.js
+
+  - job: DotNetTest
+    displayName: '.NET Test'
+    steps:
+    - task: Bash@3
+      displayName: 'Simple .NET Console App'
+      inputs:
+        targetType: 'inline'
+        script: |
+          dotnet new console -n HelloDotNet -o ./HelloDotNet
+          cd HelloDotNet
+          cat > Program.cs << 'EOF'
+          using System;
+          
+          Console.WriteLine("Hello from .NET!");
+          Console.WriteLine($".NET Version: {Environment.Version}");
+          Console.WriteLine($"Runtime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+          EOF
+          dotnet run
+
+  - job: DockerTest
+    displayName: 'Docker Test'
+    steps:
+    - task: Bash@3
+      displayName: 'Docker Hello World'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "FROM alpine:latest" > Dockerfile.test
+          echo "RUN echo 'Hello from Docker!'" >> Dockerfile.test
+          echo "CMD echo 'Docker build successful!'" >> Dockerfile.test
+          docker build -f Dockerfile.test -t hello-docker-test .
+          docker run --rm hello-docker-test
+
+
+# BuildKit Tests Stage
+- stage: BuildKitTestStage
+  displayName: 'BuildKit Tests'
+  dependsOn: HelloWorld  
+  condition: succeeded()
+  jobs:
+  - job: BuildKitTest
+    displayName: 'BuildKit Test'
+    steps:
+      - script: |
+          echo "Prüfe Docker-Version..."
+          docker version
+          echo "Prüfe, ob BuildKit aktiv ist..."
+          docker info | grep -i buildkit"
+        displayName: 'show docker version'
+        
+      - script: |
+          echo "FROM alpine:3.18" > Dockerfile
+          echo "RUN --network=host echo 'Test mit RUN --network=host'" >> Dockerfile
+          echo "Dockerfile erzeugt:"
+          cat Dockerfile
+        displayName: 'Dockerfile erstellen'
+
+      - script: |
+          echo "Test Legacy Builder (sollte fehlschlagen)..."
+          echo "DOCKER_BUILDKIT gesetzt auf: $(DOCKER_BUILDKIT)"
+          docker build -t test:legacy .
+        displayName: 'Legacy Builder Test'
+        continueOnError: true
+
+      - script: |
+          echo "Test BuildKit (sollte funktionieren wenn buildx verfügbar)..."
+          docker build -t test:buildkit .
+        displayName: 'BuildKit Test'
+        env:
+          DOCKER_BUILDKIT: '1'
+        continueOnError: true        
