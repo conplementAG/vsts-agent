@@ -1,4 +1,4 @@
-name: vsts-image-build-push
+name: VSTS Image Build and Push
 
 on:
   workflow_dispatch:

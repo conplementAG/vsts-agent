@@ -1,4 +1,4 @@
-name: vsts-image-onprem-build-push
+name: VSTS Image OnPrem Build and Push
 
 on:
   workflow_dispatch:
