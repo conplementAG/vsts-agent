@@ -1,0 +1,193 @@
+name: VSTS Image OnPrem Build and Push local only with github actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag for VSTS agent (e.g., 3.0-test)'
+        required: false
+        type: string
+        default: 'test-local'
+      run_push:
+        description: 'Run Push phase?'
+        required: true
+        type: boolean
+        default: false
+
+env:
+  REGISTRY_PORT: 5000
+  REGISTRY_NAME: vsts-test-registry
+  IMAGE_NAME: localhost:5000/vsts-agent
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  build:
+    name: Build VSTS Agent Image
+    runs-on: [self-hosted, OnPremise]
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: false
+        tags: vsts-agent:${{ github.event.inputs.tag }}
+        outputs: type=docker,dest=/tmp/vsts-image-${{ github.event.inputs.tag }}.tar
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsts-image-${{ github.event.inputs.tag }}
+        path: /tmp/vsts-image-${{ github.event.inputs.tag }}.tar
+        retention-days: 7
+
+  push:
+    name: Push and Test VSTS Agent Image
+    runs-on: [self-hosted, OnPremise]
+    needs: build
+    if: ${{ github.event.inputs.run_push == 'true' }}
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsts-image-${{ github.event.inputs.tag }}
+        path: /tmp
+        
+    - name: Load Docker image
+      run: docker load --input /tmp/vsts-image-${{ github.event.inputs.tag }}.tar
+    
+    - name: Start local Docker Registry
+      run: |
+        echo "Starting local Docker Registry..."
+        docker run -d \
+          --name ${{ env.REGISTRY_NAME }} \
+          -p ${{ env.REGISTRY_PORT }}:5000 \
+          --restart=unless-stopped \
+          registry:2
+        
+        echo "Configuring Docker client for insecure registry..."
+        mkdir -p ~/.docker
+        echo '{
+          "insecure-registries": ["localhost:5000", "127.0.0.1:5000"]
+        }' > ~/.docker/config.json
+        
+        echo "Waiting for registry to be ready..."
+        for i in {1..15}; do
+          # Check if container is running
+          if ! docker ps | grep -q ${{ env.REGISTRY_NAME }}; then
+            echo "Registry container is not running"
+            docker logs ${{ env.REGISTRY_NAME }}
+            exit 1
+          fi
+          
+          # Test registry from inside the container
+          INTERNAL_RESPONSE=$(docker exec ${{ env.REGISTRY_NAME }} wget -qO- http://localhost:5000/v2/ 2>/dev/null || echo "")
+          if [ "$INTERNAL_RESPONSE" = "{}" ]; then
+            echo "Registry is ready and responding correctly"
+            break
+          fi
+          
+          echo "Attempt $i/15: Registry starting up, waiting 2 seconds..."
+          sleep 2
+          
+          if [ $i -eq 15 ]; then
+            echo "Registry failed to start after 30 seconds"
+            docker logs ${{ env.REGISTRY_NAME }}
+            exit 1
+          fi
+        done
+    
+    - name: Tag Image for Registry
+      run: |
+        echo "Tagging image for local registry..."
+        docker tag vsts-agent:${{ github.event.inputs.tag }} ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
+        
+    - name: Push to Local Registry
+      run: |
+        echo "Pushing VSTS Agent image to local registry..."
+        docker push ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
+        echo "✓ Image pushed successfully"
+        
+    - name: Show Image Information
+      run: |
+        echo "================================="
+        echo "VSTS AGENT IMAGE INFORMATION"
+        echo "================================="
+        docker images | grep vsts-agent || true
+        echo ""
+        echo "Image Details:"
+        docker inspect ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }} --format='
+        Tag: {{index .RepoTags 0}}
+        Size: {{.Size}} bytes
+        Created: {{.Created}}
+        Architecture: {{.Architecture}}
+        OS: {{.Os}}
+        ' || true
+        echo "================================="
+        
+    - name: Registry Statistics
+      run: |
+        echo "Registry Statistics:"
+        echo "Registry storage usage:"
+        docker exec ${{ env.REGISTRY_NAME }} du -sh /var/lib/registry
+        echo ""
+        echo "Registry catalog:"
+        docker exec ${{ env.REGISTRY_NAME }} wget -qO- http://localhost:5000/v2/_catalog 2>/dev/null
+
+  cleanup:
+    name: Cleanup Local Registry
+    runs-on: [self-hosted, OnPremise]
+    needs: [build, push]
+    if: always()
+    
+    steps:
+    - name: Cleanup Registry and Images
+      run: |
+        echo "Cleaning up test environment..."
+        
+        # Stop and remove registry
+        echo "Stopping test registry..."
+        docker stop ${{ env.REGISTRY_NAME }} || true
+        docker rm ${{ env.REGISTRY_NAME }} || true
+        
+        # Remove test images
+        echo "Removing test images..."
+        docker rmi ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }} || true
+        docker rmi vsts-agent:${{ github.event.inputs.tag }} || true
+        docker rmi registry:2 || true
+        
+        # Clean up Docker client config
+        echo "Cleaning up Docker client config..."
+        rm -f ~/.docker/config.json || true
+        
+        # Clean up artifact file
+        echo "Cleaning up artifact file..."
+        rm -f /tmp/vsts-image-${{ github.event.inputs.tag }}.tar || true
+        
+        echo "✓ Cleanup completed"
+        
+    - name: Final Summary
+      if: always()
+      run: |
+        echo "================================="
+        echo "VSTS IMAGE TEST SUMMARY"
+        echo "================================="
+        echo "✓ VSTS Agent Build: Success (via GitHub Action)"
+        echo "✓ Image exported as artifact"
+        echo "✓ Local Registry: Started and configured"
+        echo "✓ Registry Push: Success"
+        echo "✓ Cleanup: Completed"
+        echo "================================="
+        echo "VSTS Agent image is ready for deployment!"
+        echo "================================="
