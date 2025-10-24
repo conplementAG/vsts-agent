@@ -79,35 +79,29 @@ jobs:
         
         echo "Waiting for registry to be ready..."
         for i in {1..15}; do
+          # Check if container is running
           if ! docker ps | grep -q ${{ env.REGISTRY_NAME }}; then
             echo "Registry container is not running"
             docker logs ${{ env.REGISTRY_NAME }}
             exit 1
           fi
           
+          # Test registry from inside the container
           INTERNAL_RESPONSE=$(docker exec ${{ env.REGISTRY_NAME }} wget -qO- http://localhost:5000/v2/ 2>/dev/null || echo "")
           if [ "$INTERNAL_RESPONSE" = "{}" ]; then
-            echo "✓ Registry is ready (attempt $i)"
+            echo "Registry is ready and responding correctly"
             break
           fi
           
-          if [ "$i" -eq 15 ]; then
-            echo "✗ Registry failed to start after 15 attempts"
+          echo "Attempt $i/15: Registry starting up, waiting 2 seconds..."
+          sleep 2
+          
+          if [ $i -eq 15 ]; then
+            echo "Registry failed to start after 30 seconds"
             docker logs ${{ env.REGISTRY_NAME }}
             exit 1
           fi
-          
-          echo "Registry not ready yet (attempt $i/15), waiting..."
-          sleep 2
         done
-        
-        echo "Testing registry connectivity..."
-        curl -f http://localhost:${{ env.REGISTRY_PORT }}/v2/ || {
-          echo "Failed to connect to registry"
-          exit 1
-        }
-        
-        echo "✓ Registry is running and accessible"
     
     - name: Tag Image for Registry
       run: |
