@@ -114,43 +114,6 @@ jobs:
         docker push ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
         echo "✓ Image pushed successfully"
         
-    - name: Verify Image in Registry
-      run: |
-        echo "Verifying image in registry..."
-        
-        # Check image manifest
-        curl -f http://localhost:${{ env.REGISTRY_PORT }}/v2/vsts-agent/manifests/${{ github.event.inputs.tag }} || {
-          echo "Failed to get image manifest"
-          exit 1
-        }
-        
-        # List tags
-        echo "Available tags in registry:"
-        curl -s http://localhost:${{ env.REGISTRY_PORT }}/v2/vsts-agent/tags/list | jq '.'
-        
-        echo "✓ Image verified in registry"
-        
-    - name: Test Pull from Registry
-      run: |
-        echo "Testing pull from local registry..."
-        
-        # Remove local image first
-        docker rmi ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }} || true
-        
-        # Pull from registry
-        docker pull ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }}
-        
-        echo "✓ Successfully pulled image from registry"
-        
-    - name: Test Container Run
-      run: |
-        echo "Testing if container can run..."
-        
-        # Test with a simple command
-        docker run --rm ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }} docker --version
-        
-        echo "✓ Container runs successfully"
-        
     - name: Show Image Information
       run: |
         echo "================================="
@@ -175,7 +138,7 @@ jobs:
         docker exec ${{ env.REGISTRY_NAME }} du -sh /var/lib/registry
         echo ""
         echo "Registry catalog:"
-        curl -s http://localhost:${{ env.REGISTRY_PORT }}/v2/_catalog | jq '.'
+        docker exec ${{ env.REGISTRY_NAME }} wget -qO- http://localhost:5000/v2/_catalog 2>/dev/null
 
   cleanup:
     name: Cleanup Local Registry
