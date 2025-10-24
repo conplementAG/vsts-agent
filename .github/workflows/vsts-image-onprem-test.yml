@@ -13,11 +13,6 @@ on:
         required: true
         type: boolean
         default: false
-      run_cleanup:
-        description: 'Run Cleanup phase?'
-        required: true
-        type: boolean
-        default: false
 
 env:
   REGISTRY_PORT: 5000
@@ -144,7 +139,7 @@ jobs:
     name: Cleanup Local Registry
     runs-on: [self-hosted, OnPremise]
     needs: [build, push]
-    if: ${{ always() && github.event.inputs.run_cleanup == 'true' }}
+    if: always()
     
     steps:
     - name: Cleanup Registry and Images
@@ -159,6 +154,7 @@ jobs:
         # Remove test images
         echo "Removing test images..."
         docker rmi ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag }} || true
+        docker rmi vsts-agent:${{ github.event.inputs.tag }} || true
         docker rmi registry:2 || true
         
         # Clean up Docker client config
