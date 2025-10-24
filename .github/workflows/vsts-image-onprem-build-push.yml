@@ -1,4 +1,4 @@
-name: VSTS Image OnPrem Build and Push
+name: VSTS Image OnPrem Build and Push local only
 
 on:
   workflow_dispatch:
