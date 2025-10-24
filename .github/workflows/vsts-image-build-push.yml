@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: vsts-image-build-push
 
 on:
   workflow_dispatch:
